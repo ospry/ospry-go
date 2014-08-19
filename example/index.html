@@ -1,0 +1,121 @@
+{{ define "index" }}
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Ospry Example</title>
+    <style>
+      #drop-zone { height: 100px; width: 200px; border: solid 2px black; }
+    </style>
+  </head>
+  <body>
+
+    <form method="POST" action="/images" enctype="multipart/form-data">
+      Upload images (server-side):
+      <input name="file" type="file" multiple>
+      <button type="submit">Upload</button>
+    </form>
+
+    <div id="drop-zone">
+      Or drag-and-drop here.<br />(client-side upload w/ server-side claiming).
+    </div>
+
+    <form method="POST" action="/make-private">
+      Make the images private:
+      <button type="submit">Make Private</button>
+    </form>
+
+    <form method="POST" action="/make-public">
+      Make the images public:
+      <button type="submit">Make Public</button>
+    </form>
+
+    <form method="POST" action="/images">
+      <input name="method" type="hidden" value="DELETE" />
+      Delete the images.
+      <button type="submit">Delete Images</button>
+    </form>
+
+    <div id="public-images">
+      <h2>Public Links:</h2>
+    </div>
+
+    <div id="private-images">
+      <h2>Private Links:</h2>
+    </div>
+    
+    <script src="http://code.jquery.com/jquery-1.11.1.min.js"></script>
+    <script src="https://code.ospry.io/v1/ospry.js"></script>
+    <script>
+
+      var publicUrls = {{ .PublicURLs }};
+      var privateUrls = {{ .PrivateURLs }};
+
+      var ospry = new Ospry('{{ .PublicKey }}');
+
+      ospry.get({
+        urls: publicUrls,
+        maxHeight: 120,
+        imageReady: function(err, domImage) {
+          $('#public-images').append(domImage);
+        },
+      });
+
+      ospry.get({
+        urls: privateUrls,
+        maxHeight: 120,
+        imageReady: function(err, domImage) {
+          $('#private-images').append(domImage);
+        },
+      });
+
+      $('#drop-zone').on('drop', function(e) {
+        e.preventDefault();
+        ospry.up({
+          files: e.originalEvent.dataTransfer.files,
+          isPrivate: true,
+          imageReady: function(err, metadata) {
+            if (err !== null) {
+              console.log(err);
+              return;
+            }
+            // Load the public url now.
+            ospry.get({
+              url: metadata.url,
+              maxHeight: 120,
+              imageReady: function(err, domImage) {
+                $('#public-images').append(domImage);
+              },
+            });
+            // Tell the server about the image.
+            $.ajax({
+              type: 'POST',
+              url: '/claim',
+              contentType: 'application/json',
+              data: JSON.stringify(metadata),
+              success: function(data) {
+                // Display the server-signed private link.
+                ospry.get({
+                  url: data.privateUrl,
+                  maxHeight: 120,
+                  imageReady: function(err, domImage) {
+                    $('#private-images').append(domImage);
+                  },
+                });
+              },
+            })
+          },
+        });
+      });
+
+      // Don't let the browser open a dropped image in a new tab.
+      $(window).on('dragover', function(e) {
+        e.preventDefault();
+      });
+
+    </script>
+
+  </body>
+</html>
+
+{{ end }}

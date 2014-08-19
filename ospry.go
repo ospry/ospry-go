@@ -131,6 +131,11 @@ func MakePublic(id string) (*Metadata, error) {
 	return DefaultClient.MakePublic(id)
 }
 
+// Delete calls Delete on the default client.
+func Delete(id string) error {
+	return DefaultClient.Delete(id)
+}
+
 // FormatURL calls FormatURL on the default client.
 func FormatURL(urlstr string, opts *RenderOpts) (string, error) {
 	return DefaultClient.FormatURL(urlstr, opts)
