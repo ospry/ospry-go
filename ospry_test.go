@@ -19,8 +19,6 @@ import (
 	"reflect"
 	"testing"
 	"time"
-
-	_ "code.google.com/p/go.image/bmp"
 )
 
 var (

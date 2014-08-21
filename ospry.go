@@ -57,7 +57,7 @@ import (
 )
 
 var (
-	Formats       = []string{"jpeg", "png", "gif", "bmp"}
+	Formats       = []string{"jpeg", "png", "gif"}
 	DefaultClient = New("")
 )
 
