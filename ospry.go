@@ -64,6 +64,7 @@ var (
 type Metadata struct {
 	ID          string    `json:"id"`
 	URL         string    `json:"url"`
+	HTTPSURL    string    `json:"httpsURL"`
 	TimeCreated time.Time `json:"timeCreated"`
 	IsClaimed   bool      `json:"isClaimed"`
 	IsPrivate   bool      `json:"isPrivate"`

@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -205,28 +206,45 @@ func TestPrivacy(t *testing.T) {
 func TestFormatURLSigning(t *testing.T) {
 	c := newClient()
 	imgURL := "http://foo.ospry.io/bar/baz.png"
+	httpsImgURL := "https://ssl.ospry.io/bar/baz.png?sub=foo"
+	shortHTTPSImgURL := httpsImgURL[:strings.Index(httpsImgURL, "?")]
 	encodedURL := url.QueryEscape(imgURL)
+	encodedHTTPSURL := url.QueryEscape(shortHTTPSImgURL)
 	inTime := time.Now()
 	encodedInTime := url.QueryEscape(inTime.Format(time.RFC3339Nano))
 	h := hmac.New(sha256.New, []byte(*secretKey))
 	h.Write([]byte(imgURL + "?timeExpired=" + encodedInTime))
 	encodedInSignature := url.QueryEscape(base64.StdEncoding.EncodeToString(h.Sum(nil)))
+	h = hmac.New(sha256.New, []byte(*secretKey))
+	h.Write([]byte(shortHTTPSImgURL + "?timeExpired=" + encodedInTime))
+	encodedHTTPSInSignature := url.QueryEscape(base64.StdEncoding.EncodeToString(h.Sum(nil)))
 	in := []string{
 		imgURL,
 		imgURL + "?format=jpeg&maxHeight=200&maxWidth=200",
 		fmt.Sprintf("https://api.ospry.io/?url=%s&timeExpired=%s&signature=%s", encodedURL, encodedInTime, encodedInSignature),
 		fmt.Sprintf("https://api.ospry.io/?url=%s&timeExpired=%s&signature=%s&format=gif&maxHeight=300&maxWidth=200", encodedURL, encodedInTime, encodedInSignature),
+		httpsImgURL,
+		httpsImgURL + "&format=jpeg&maxHeight=200&maxWidth=200",
+		fmt.Sprintf("https://api.ospry.io/?url=%s&timeExpired=%s&signature=%s&sub=foo", encodedHTTPSURL, encodedInTime, encodedHTTPSInSignature),
+		fmt.Sprintf("https://api.ospry.io/?url=%s&timeExpired=%s&signature=%s&sub=foo&format=gif&maxHeight=300&maxWidth=200", encodedHTTPSURL, encodedInTime, encodedHTTPSInSignature),
 	}
 	wantTime := time.Now().Add(time.Minute)
 	encodedWantTime := url.QueryEscape(wantTime.Format(time.RFC3339Nano))
 	h = hmac.New(sha256.New, []byte(*secretKey))
 	h.Write([]byte(imgURL + "?timeExpired=" + encodedWantTime))
 	encodedWantSignature := url.QueryEscape(base64.StdEncoding.EncodeToString(h.Sum(nil)))
+	h = hmac.New(sha256.New, []byte(*secretKey))
+	h.Write([]byte(shortHTTPSImgURL + "?timeExpired=" + encodedWantTime))
+	encodedHTTPSWantSignature := url.QueryEscape(base64.StdEncoding.EncodeToString(h.Sum(nil)))
 	want := []string{
 		fmt.Sprintf("https://api.ospry.io/?signature=%s&timeExpired=%s&url=%s", encodedWantSignature, encodedWantTime, encodedURL),
 		fmt.Sprintf("https://api.ospry.io/?format=jpeg&maxHeight=200&maxWidth=200&signature=%s&timeExpired=%s&url=%s", encodedWantSignature, encodedWantTime, encodedURL),
 		fmt.Sprintf("https://api.ospry.io/?signature=%s&timeExpired=%s&url=%s", encodedWantSignature, encodedWantTime, encodedURL),
 		fmt.Sprintf("https://api.ospry.io/?format=gif&maxHeight=300&maxWidth=200&signature=%s&timeExpired=%s&url=%s", encodedWantSignature, encodedWantTime, encodedURL),
+		fmt.Sprintf("https://api.ospry.io/?signature=%s&sub=foo&timeExpired=%s&url=%s", encodedHTTPSWantSignature, encodedWantTime, encodedHTTPSURL),
+		fmt.Sprintf("https://api.ospry.io/?format=jpeg&maxHeight=200&maxWidth=200&signature=%s&sub=foo&timeExpired=%s&url=%s", encodedHTTPSWantSignature, encodedWantTime, encodedHTTPSURL),
+		fmt.Sprintf("https://api.ospry.io/?signature=%s&sub=foo&timeExpired=%s&url=%s", encodedHTTPSWantSignature, encodedWantTime, encodedHTTPSURL),
+		fmt.Sprintf("https://api.ospry.io/?format=gif&maxHeight=300&maxWidth=200&signature=%s&sub=foo&timeExpired=%s&url=%s", encodedHTTPSWantSignature, encodedWantTime, encodedHTTPSURL),
 	}
 	testFormatURL(t, c, in, want, &RenderOpts{
 		TimeExpired: wantTime,
